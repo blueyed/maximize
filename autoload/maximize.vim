@@ -64,7 +64,7 @@ function! maximize#MaximizeWindow(full) " {{{
     let last = winnr('$')
     let index = 1
     while index <= last
-      call s:InitWindowDimensions(index)
+      call s:InitWindowDimensions(index, 1)
       let index += 1
     endwhile
     exec 'set winminwidth=' . g:MaximizeMinWinWidth
@@ -100,7 +100,7 @@ function! maximize#MinimizeWindow(...) " {{{
   let last = winnr('$')
   let index = 1
   while index <= last
-    call s:InitWindowDimensions(index)
+    call s:InitWindowDimensions(index, 1)
     let index += 1
   endwhile
 
@@ -145,7 +145,7 @@ function! maximize#MaximizeUpdate(full, force) " {{{
     return
   endif
 
-  call s:InitWindowDimensions(winnr())
+  call s:InitWindowDimensions(winnr(), 1)
   call s:DisableMaximizeAutoCommands()
 
   let w:maximized = 1
@@ -229,12 +229,12 @@ function! maximize#NavigateWindows(wincmd) " {{{
   endif
 endfunction " }}}
 
-function! s:InitWindowDimensions(winnr) " {{{
-  if getwinvar(a:winnr, 'winheight') == ''
+function! s:InitWindowDimensions(winnr, update) " {{{
+  if a:update || getwinvar(a:winnr, 'winheight') == ''
     "echom 'win: ' . a:winnr . ' height: ' . winheight(a:winnr)
     call setwinvar(a:winnr, 'winheight', winheight(a:winnr))
   endif
-  if getwinvar(a:winnr, 'winwidth') == ''
+  if a:update || getwinvar(a:winnr, 'winwidth') == ''
     "echom 'win: ' . a:winnr . ' width:  ' . winwidth(a:winnr)
     call setwinvar(a:winnr, 'winwidth', winwidth(a:winnr))
   endif
@@ -354,7 +354,7 @@ function! s:MaximizeRefresh(full) " {{{
     return
   endif
 
-  call s:InitWindowDimensions(winnr())
+  call s:InitWindowDimensions(winnr(), 1)
   let maximized = s:GetMaximizedWindow()
   if maximized
     let curwin = winnr()
@@ -402,7 +402,7 @@ function! s:Reminimize(force) " {{{
     return
   endif
 
-  call s:InitWindowDimensions(winnr())
+  call s:InitWindowDimensions(winnr(), 1)
   let curwinnum = winnr()
   let winend = winnr('$')
   let winnum = 1
