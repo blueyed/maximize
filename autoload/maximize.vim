@@ -55,7 +55,8 @@ function! maximize#MaximizeWindow(full) " {{{
       call s:DisableMaximizeAutoCommands()
     else
     endif
-    call maximize#RestoreWindows(s:GetMaximizedWindow())
+    call setwinvar(s:GetMaximizedWindow(), 'maximized', 0)
+    call s:RestoreWindows(0)
   endif
 
   let maximized_mode = a:full ? 'full' : 'fixed'
@@ -86,7 +87,8 @@ function! maximize#MinimizeWindow(...) " {{{
 
   " first turn off maximized if enabled
   if s:IsTabMaximized()
-    call maximize#RestoreWindows(s:GetMaximizedWindow())
+    call setwinvar(s:GetMaximizedWindow(), 'maximized', 0)
+    call s:RestoreWindows(0)
   endif
 
   let args = []
@@ -100,7 +102,7 @@ function! maximize#MinimizeWindow(...) " {{{
   let last = winnr('$')
   let index = 1
   while index <= last
-    call s:InitWindowDimensions(index, 1)
+    call s:InitWindowDimensions(index, 0)
     let index += 1
   endwhile
 
@@ -145,7 +147,8 @@ function! maximize#MaximizeUpdate(full, force) " {{{
     return
   endif
 
-  call s:InitWindowDimensions(winnr(), 1)
+  " init current window dimensions
+  call s:InitWindowDimensions(winnr(), 0)
   call s:DisableMaximizeAutoCommands()
 
   let w:maximized = 1
@@ -153,7 +156,8 @@ function! maximize#MaximizeUpdate(full, force) " {{{
   winc _
 
   if !a:full
-    call s:RestoreFixedWindows()
+    " restore fixed windows
+    call s:RestoreWindows(1)
   else
     let winnr = winnr()
     if getwinvar(winnr, '&winfixheight')
@@ -185,24 +189,33 @@ function! maximize#ResetMinimized() " {{{
     let winnum = winnum + 1
   endwhile
 
-  call s:RestoreFixedWindows()
-  winc =
+  call s:RestoreWindows(0)
 
   if s:IsAnotherTabMinimized()
     call s:EnableMinimizeAutoCommands()
   endif
 endfunction " }}}
 
-function! maximize#RestoreWindows(maximized) " {{{
-  " reset the maximized var.
-  if a:maximized
-    call setwinvar(a:maximized, 'maximized', 0)
-  endif
+function! s:RestoreWindows(fixedonly) " {{{
 
-  winc _
-  winc =
+  let fixedonly = a:fixedonly
 
-  call s:RestoreFixedWindows()
+  let last = winnr('$')
+  let index = last+1
+  while index > 1
+    let index -= 1
+    if getwinvar(index, 'minimized')
+      continue
+    endif
+    if !fixedonly || getwinvar(index, '&winfixheight')
+      echom index . 'resize ' . getwinvar(index, 'winheight')
+      exec index . 'resize ' . getwinvar(index, 'winheight')
+    endif
+    if !fixedonly || getwinvar(index, '&winfixwidth')
+      echom 'vertical ' . index . 'resize ' . getwinvar(index, 'winwidth')
+      exec 'vertical ' . index . 'resize ' . getwinvar(index, 'winwidth')
+    endif
+  endwhile
 endfunction " }}}
 
 function! maximize#NavigateWindows(wincmd) " {{{
@@ -377,23 +390,6 @@ function! s:CloseFixedWindow(full) " {{{
   endif
 endfunction " }}}
 
-function! s:RestoreFixedWindows() " {{{
-  let last = winnr('$')
-  let index = last
-  while index >= 1
-    let minimized = getwinvar(index, 'minimized')
-    if getwinvar(index, '&winfixheight') && minimized != 1
-      "echom index . 'resize ' . getwinvar(index, 'winheight')
-      exec index . 'resize ' . getwinvar(index, 'winheight')
-    endif
-    if getwinvar(index, '&winfixwidth') && minimized != 1
-      "echom 'vertical ' . index . 'resize ' . getwinvar(index, 'winwidth')
-      exec 'vertical ' . index . 'resize ' . getwinvar(index, 'winwidth')
-    endif
-    let index -= 1
-  endwhile
-endfunction " }}}
-
 function! s:Reminimize(force) " {{{
   " Invoked when changing windows to ensure that any minimized windows are
   " returned to their minimized state.
@@ -402,7 +398,7 @@ function! s:Reminimize(force) " {{{
     return
   endif
 
-  call s:InitWindowDimensions(winnr(), 1)
+  call s:InitWindowDimensions(winnr(), 0)
   let curwinnum = winnr()
   let winend = winnr('$')
   let winnum = 1
@@ -460,7 +456,7 @@ function! s:Reminimize(force) " {{{
   endfor
 
   winc =
-  call s:RestoreFixedWindows()
+  call s:RestoreWindows(1)
 endfunction " }}}
 
 function! s:IsInRow(window) " {{{
